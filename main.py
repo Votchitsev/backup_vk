@@ -1,6 +1,7 @@
 import requests
 import json
 from datetime import datetime
+from pprint import pprint
 
 with open('token.txt', 'r', encoding='utf-8') as token_file:
     access_token = token_file.read()
@@ -62,16 +63,43 @@ def upload_photo(photo_dict):
     for uploading_photo in photo_for_upload:
         name_photo = uploading_photo['photo_name']
         photo_url = uploading_photo['url']
-        params_yandex_drive = {'path': 'backup_vk/' + name_photo,
-                           'overwrite': 'true',
-                           'url': photo_url}
-        requests.post(API_BASE_URL_YANDEX_DRIVE + 'resources/copy',
+        params_yandex_drive = {
+            'path': 'backup_vk/' + name_photo,
+            'overwrite': 'true',
+            'url': photo_url
+        }
+        requests.post(API_BASE_URL_YANDEX_DRIVE + 'resources/upload',
                       headers=headers_yandex_drive,
                       params=params_yandex_drive)
-        print(f'Файл {name_photo} добавлен на Яндекс.диск')
+        print(f'Файл {name_photo} добавлен на Яндекс.Диск')
 
     with open('result.json', 'w') as result_file:
         json.dump(photo_inf_for_result_file, result_file, indent=2)
+
+
+def delete():
+    params = {'path': 'backup_vk'}
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': f'OAuth {token_yandex_drive}'
+    }
+    files_info = requests.get(API_BASE_URL_YANDEX_DRIVE + 'resources', params=params, headers=headers)
+    pprint(files_info.json())
+
+    for file_name in files_info.json()['_embedded']['items']:
+        print(file_name['path'])
+        params = {
+            'path': file_name['path'],
+            'permanently': True
+        }
+
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'OAuth {token_yandex_drive}'
+        }
+
+        requests.delete(API_BASE_URL_YANDEX_DRIVE + 'resources/', params=params, headers=headers)
+        print(f"Файл '{file_name['name']}' удален.")
 
 
 def delete_photo_in_folder():
@@ -89,12 +117,31 @@ def delete_photo_in_folder():
             }
 
             requests.delete(API_BASE_URL_YANDEX_DRIVE + 'resources/', params=params, headers=headers)
-            print(f"Фотография {photo['file_name']} удалена.")
+            print(f"Файл '{photo['file_name']}' удален.")
+        new_result_file = []
+        for photo in new_result_file:
+            if photo not in uploaded_photos:
+                new_result_file.append(photo)
+    with open('result.json', 'w') as del_file:
+        json.dump(new_result_file, del_file, indent=2)  #
+
+
+def show_photo():
+    print('Список загруженных файлов:')
+    with open('result.json', 'r') as result_file:
+        uploaded_photo_list = json.load(result_file)
+        for photo in uploaded_photo_list:
+            print(f"Имя файла: {photo['file_name']}  Тип файла: {photo['type']}")
 
 
 def main_menu(main_command):
     if main_command == 'add':
-        input_id = int(input('Введите id аккаунта пользователя в ВКонтакте: '))
+        try:
+            input_id = int(input('Введите id аккаунта пользователя в ВКонтакте: '))
+        except ValueError:
+            print('Ошибка значения...')
+            return False
+
         quantity_photo = input('Введите количество фото для загрузки (по умолчанию - 5): ')
         try:
             quantity_photo_int = int(quantity_photo)
@@ -106,7 +153,15 @@ def main_menu(main_command):
         upload_photo(photo)
 
     elif main_command == 'del':
-        delete_photo_in_folder()
+        delete()
+
+    elif main_command == 'help':
+        with open('help.txt', 'r', encoding='utf-8') as help_file:
+            print(help_file.read())
+
+    elif main_command == 'show':
+        show_photo()
+
     else:
         print('Неизвестная команда.\nДля справки введите "help".')
 
@@ -121,3 +176,4 @@ while True:
 
 
 # 552934290
+# 25222915
