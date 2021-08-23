@@ -14,17 +14,40 @@ API_BASE_URL_YANDEX_DRIVE = 'https://cloud-api.yandex.net/v1/disk/'
 
 
 def upload_photo(owner_id, count=5):
-    params = {
+    params_for_get_albums = {
         'v': '5.131',
         'owner_id': owner_id,
-        'album_id': 'profile',
+        'access_token': access_token,
+    }
+
+    albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
+    dict_for_select_album = {1: 'profile', 2: 'wall', 3: 'saved'}
+    print('Список альбомов для загрузки:')
+    print('1 - Фотографии профиля\n2 - Фотографии со стены \n3 - Сохраненные фотографии')
+    album_count = 3
+    for album in albums_information.json()['response']['items']:
+        album_count += 1
+        dict_for_select_album[album_count] = album['id']
+        print(f"{album_count} - {album['title']}")
+    print(f"{album_count+1} - Выход")
+    dict_for_select_album[album_count+1] = 0
+    select_album_number = int(input('Введите номер альбома: '))
+    selected_album = dict_for_select_album[select_album_number]
+
+    if selected_album == 0:
+        return False
+
+    params_for_get_photos = {
+        'v': '5.131',
+        'owner_id': owner_id,
+        'album_id': selected_album,
         'access_token': access_token,
         'rev': 1,
         'extended': 1,
         'count': count
     }
 
-    photo_full_information = requests.get(API_BASE_URL_VK + 'photos.get', params=params)
+    photo_full_information = requests.get(API_BASE_URL_VK + 'photos.get', params=params_for_get_photos)
     try:
         photo_list = photo_full_information.json()['response']['items']
         photo_information = []
@@ -76,7 +99,7 @@ def upload_photo(owner_id, count=5):
         with open('result.json', 'w') as result_file:
             json.dump(photo_inf_for_result_file, result_file, indent=2)
     except KeyError:
-        print('Такой страницы не существует.')
+        print('Такой страницы не существует, либо отсутствует доступ.')
         return False
 
 
