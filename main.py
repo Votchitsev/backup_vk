@@ -3,6 +3,9 @@ import json
 from datetime import datetime
 from pprint import pprint
 
+with open('welcome.txt', 'r', encoding='utf-8') as welcome_file:
+    print(welcome_file.read())
+
 with open('token.txt', 'r', encoding='utf-8') as token_file:
     access_token = token_file.read()
 
@@ -21,20 +24,25 @@ def upload_photo(owner_id, count=5):
     }
 
     albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
-    dict_for_select_album = {1: 'profile', 2: 'wall', 3: 'saved'}
+    dict_for_select_album = {1: 'profile', 2: 'wall'}
     print('Список альбомов для загрузки:')
-    print('1 - Фотографии профиля\n2 - Фотографии со стены \n3 - Сохраненные фотографии')
-    album_count = 3
+    print('1 - Фотографии профиля\n2 - Фотографии со стены')
+    album_count = 2
     for album in albums_information.json()['response']['items']:
         album_count += 1
         dict_for_select_album[album_count] = album['id']
         print(f"{album_count} - {album['title']}")
     print(f"{album_count+1} - Выход")
     dict_for_select_album[album_count+1] = 0
-    select_album_number = int(input('Введите номер альбома: '))
-    selected_album = dict_for_select_album[select_album_number]
 
-    if selected_album == 0:
+    try:
+        select_album_number = int(input('Введите номер альбома: '))
+        selected_album = dict_for_select_album[select_album_number]
+
+        if selected_album == 0:
+            return False
+    except ValueError:
+        print('Неверное значение.')
         return False
 
     params_for_get_photos = {
