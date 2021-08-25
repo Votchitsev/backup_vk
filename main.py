@@ -14,6 +14,7 @@ with open('token_yandex_drive.txt', 'r', encoding='utf-8') as token_yandex_drive
 
 API_BASE_URL_VK = 'https://api.vk.com/method/'
 API_BASE_URL_YANDEX_DRIVE = 'https://cloud-api.yandex.net/v1/disk/'
+API_BASE_URL_INSTAGRAM = 'https://graph.facebook.com/'
 
 
 def upload_photo(owner_id, count=5):
@@ -23,17 +24,21 @@ def upload_photo(owner_id, count=5):
         'access_token': access_token,
     }
 
-    albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
-    dict_for_select_album = {1: 'profile', 2: 'wall'}
-    print('Список альбомов для загрузки:')
-    print('1 - Фотографии профиля\n2 - Фотографии со стены')
-    album_count = 2
-    for album in albums_information.json()['response']['items']:
-        album_count += 1
-        dict_for_select_album[album_count] = album['id']
-        print(f"{album_count} - {album['title']}")
-    print(f"{album_count+1} - Выход")
-    dict_for_select_album[album_count+1] = 0
+    try:
+        albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
+        dict_for_select_album = {1: 'profile', 2: 'wall'}
+        albums_information.json()['response']['items'] = True
+        print('Список альбомов для загрузки:\n1 - Фотографии профиля\n2 - Фотографии со стены')
+        album_count = 2
+        for album in albums_information.json()['response']['items']:
+            album_count += 1
+            dict_for_select_album[album_count] = album['id']
+            print(f"{album_count} - {album['title']}")
+        print(f"{album_count+1} - Выход")
+        dict_for_select_album[album_count+1] = 0
+    except KeyError:
+        print('Ошибка. Пользователь не существует.')
+        return False
 
     try:
         select_album_number = int(input('Введите номер альбома: '))
@@ -104,8 +109,19 @@ def upload_photo(owner_id, count=5):
                           params=params_yandex_drive)
             print(f'Файл {name_photo} добавлен на Яндекс.Диск')
 
-        with open('result.json', 'w') as result_file:
-            json.dump(photo_inf_for_result_file, result_file, indent=2)
+        with open('result.json', 'r') as result_file:
+            if json.load(result_file) == "empty":
+                with open('result.json', 'w') as new_result_file:
+                    json.dump(photo_inf_for_result_file, new_result_file, indent=2)
+            else:
+                with open('result.json', 'r') as new_result_file:
+                    data = json.load(new_result_file)
+
+                with open('result.json', 'w') as new_result_file:
+                    for photo in photo_inf_for_result_file:
+                        data.append(photo)
+                    json.dump(data, new_result_file, indent=2)
+
     except KeyError:
         print('Такой страницы не существует, либо отсутствует доступ.')
         return False
@@ -134,7 +150,7 @@ def delete_photo():
         requests.delete(API_BASE_URL_YANDEX_DRIVE + 'resources/', params=params, headers=headers)
 
         with open('result.json', 'w') as del_file:
-            json.dump(obj=[], fp=del_file, indent=2)
+            json.dump(obj='empty', fp=del_file, indent=2)
         print(f"Файл '{file_name['name']}' удален.")
 
 
