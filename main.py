@@ -14,7 +14,6 @@ with open('token_yandex_drive.txt', 'r', encoding='utf-8') as token_yandex_drive
 
 API_BASE_URL_VK = 'https://api.vk.com/method/'
 API_BASE_URL_YANDEX_DRIVE = 'https://cloud-api.yandex.net/v1/disk/'
-API_BASE_URL_INSTAGRAM = 'https://graph.facebook.com/'
 
 
 def upload_photo(owner_id, count=5):
@@ -22,14 +21,15 @@ def upload_photo(owner_id, count=5):
         'v': '5.131',
         'owner_id': owner_id,
         'access_token': access_token,
+        'need_system': '1'
     }
 
+    albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
     try:
-        albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
         dict_for_select_album = {1: 'profile', 2: 'wall'}
         albums_information.json()['response']['items'] = True
-        print('Список альбомов для загрузки:\n1 - Фотографии профиля\n2 - Фотографии со стены')
-        album_count = 2
+        print('Список альбомов для загрузки: ')
+        album_count = 0
         for album in albums_information.json()['response']['items']:
             album_count += 1
             dict_for_select_album[album_count] = album['id']
@@ -37,7 +37,8 @@ def upload_photo(owner_id, count=5):
         print(f"{album_count+1} - Выход")
         dict_for_select_album[album_count+1] = 0
     except KeyError:
-        print('Ошибка. Пользователь не существует.')
+        print(f"Ошибка {albums_information.json()['error']['error_code']}: "
+              f"{albums_information.json()['error']['error_msg']}")
         return False
 
     try:
@@ -123,7 +124,8 @@ def upload_photo(owner_id, count=5):
                     json.dump(data, new_result_file, indent=2)
 
     except KeyError:
-        print('Такой страницы не существует, либо отсутствует доступ.')
+        print(f"Ошибка {photo_full_information.json()['error']['error_code']}: "
+              f"{photo_full_information.json()['error']['error_msg']}")
         return False
 
 
@@ -205,3 +207,5 @@ while True:
         break
     else:
         main_menu(command)
+
+# 552934290
