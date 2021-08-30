@@ -3,8 +3,6 @@ import json
 from datetime import datetime
 from pprint import pprint
 
-with open('welcome.txt', 'r', encoding='utf-8') as welcome_file:
-    print(welcome_file.read())
 
 with open('token.txt', 'r', encoding='utf-8') as token_file:
     access_token = token_file.read()
@@ -25,8 +23,8 @@ def upload_photo(owner_id, count=5):
     }
 
     albums_information = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params_for_get_albums)
+    dict_for_select_album = {}
     try:
-        dict_for_select_album = {1: 'profile', 2: 'wall'}
         albums_information.json()['response']['items'] = True
         print('Список альбомов для загрузки: ')
         album_count = 0
@@ -34,22 +32,29 @@ def upload_photo(owner_id, count=5):
             album_count += 1
             dict_for_select_album[album_count] = album['id']
             print(f"{album_count} - {album['title']}")
-        print(f"{album_count+1} - Выход")
-        dict_for_select_album[album_count+1] = 0
+        print(f"{album_count + 1} - Выход")
+        dict_for_select_album[album_count + 1] = 0
+        choose_album = True
     except KeyError:
-        print(f"Ошибка {albums_information.json()['error']['error_code']}: "
-              f"{albums_information.json()['error']['error_msg']}")
-        return False
-
-    try:
-        select_album_number = int(input('Введите номер альбома: '))
-        selected_album = dict_for_select_album[select_album_number]
-
-        if selected_album == 0:
+        if albums_information.json()['error']['error_code'] == 15:
+            choose_album = False
+        else:
+            print(f"Ошибка {albums_information.json()['error']['error_code']}: "
+                  f"{albums_information.json()['error']['error_msg']}")
             return False
-    except ValueError:
-        print('Неверное значение.')
-        return False
+
+    if choose_album is True:
+        try:
+            select_album_number = int(input('Введите номер альбома: '))
+            selected_album = dict_for_select_album[select_album_number]
+
+            if selected_album == 0:
+                return False
+        except ValueError:
+            print('Неверное значение.')
+            return False
+    else:
+        selected_album = 'profile'
 
     params_for_get_photos = {
         'v': '5.131',
@@ -138,7 +143,6 @@ def delete_photo():
     files_info = requests.get(API_BASE_URL_YANDEX_DRIVE + 'resources', params=params, headers=headers)
 
     for file_name in files_info.json()['_embedded']['items']:
-
         params = {
             'path': file_name['path'],
             'permanently': True
@@ -196,16 +200,25 @@ def main_menu(main_command):
     elif main_command == 'show':
         show_photo()
 
+    elif command == 'test':
+        try:
+            import test_api
+            test_api.test()
+        except NameError:
+            print("Файл для тестирования не найден.")
+            return False
     else:
         print('Неизвестная команда.\nДля справки введите "help".')
 
 
-while True:
-    command = input('Введите команду: ')
-    if command == 'exit':
-        print('Работа завершена.')
-        break
-    else:
-        main_menu(command)
+if __name__ == "__main__":
+    with open('welcome.txt', 'r', encoding='utf-8') as welcome_file:
+        print(welcome_file.read())
 
-# 552934290
+    while True:
+        command = input('Введите команду: ').lower()
+        if command == 'exit':
+            print('Работа завершена.')
+            break
+        else:
+            main_menu(command)
