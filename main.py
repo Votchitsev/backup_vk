@@ -19,10 +19,10 @@ API_BASE_URL_YANDEX_DRIVE = 'https://cloud-api.yandex.net/v1/disk/'
 
 
 class Vkontakte:
-    def __init__(self, owner_id):
+    def __init__(self, owner_id, count=5):
         self.owner_id = owner_id
         self.token = access_token
-        self.count = 5
+        self.count = count
 
     def get_album_list(self):
         params = {
@@ -31,20 +31,24 @@ class Vkontakte:
             'access_token': self.token,
             'need_system': '1'
         }
+
+        album_list = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params)
+
         try:
-            album_list = requests.get(API_BASE_URL_VK + 'photos.getAlbums', params=params)
-            # pprint(album_list.json())
             album_name_list = {}
             for item in album_list.json()['response']['items']:
                 album_name_list[item['title']] = item['id']
             return album_name_list
         except KeyError:
+            print(f"Ошибка: {album_list.json()['error']['error_msg']}")
             return False
 
     def select_photo(self):
         album_numbers = {}
         album_count = 0
-        if self.get_album_list():
+        if not self.get_album_list:
+            pass
+        try:
             for i in self.get_album_list().values():
                 album_count += 1
                 album_numbers[album_count] = i
@@ -57,8 +61,8 @@ class Vkontakte:
                 print(f'{number} {albums}')
             selected_album = int(input('Введите номер альбома, из которого хотите загрузить фото: '))
             return album_numbers[selected_album]
-        else:
-            print('Ошибка')
+        except KeyError:
+            print(self.get_album_list['error']['error_msg'])
 
     def upload_photo(self):
         params = {
@@ -79,39 +83,35 @@ class Vkontakte:
 
         photo_for_upload = []
         photo_names = []
-        photo_inf_for_result_file = []
 
         for photo in photo_information:
-            photo_name_and_url = {}
-            photo_name_and_size_for_result_file = {}
+            inf_for_upload_and_result = {}
             if photo['likes'] not in photo_names:
-                photo_name_and_url['photo_name'] = str(photo['likes'])
-                photo_name_and_size_for_result_file['file_name'] = str(photo['likes'])
+                inf_for_upload_and_result['file_name'] = str(photo['likes'])
                 photo_names.append(photo['likes'])
             else:
-                photo_name_and_url['photo_name'] = \
+                inf_for_upload_and_result['file_name'] = \
                     f"{photo['likes']}_{datetime.utcfromtimestamp(photo['date']).strftime('%Y-%m-%d')}"
-                photo_name_and_size_for_result_file['file_name'] = \
-                    f"{photo['likes']}_{datetime.utcfromtimestamp(photo['date']).strftime('%Y-%m-%d')}"
-            photo_name_and_url['url'] = photo['sizes']['url']
-            photo_name_and_url['type'] = photo['sizes']['type']
-            photo_for_upload.append(photo_name_and_url)
-            photo_name_and_size_for_result_file['type'] = photo['sizes']['type']
-            photo_inf_for_result_file.append(photo_name_and_size_for_result_file)
+            inf_for_upload_and_result['url'] = photo['sizes']['url']
+            inf_for_upload_and_result['size'] = photo['sizes']['type']
+            photo_for_upload.append(inf_for_upload_and_result)
         return photo_for_upload
 
 
 class Yandex:
-    token = token_yandex_drive
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'OAuth {token_yandex_drive}'
-    }
+    def __init__(self, files):
+        self.files = files
+        self.token = token_yandex_drive
+        self.headers = {
+            'Accept': 'application/json',
+            'Authorization': f'OAuth {token_yandex_drive}'
+        }
 
     def upload_photo(self):
-        print(f"Загрузка {sasha.count} фото ...")
-        for uploading_photo in sasha.upload_photo():
-            name_photo = uploading_photo['photo_name']
+        file_list = self.files
+        print(f"Загрузка {user.count} фото ...")
+        for uploading_photo in file_list:
+            name_photo = uploading_photo['file_name']
             photo_url = uploading_photo['url']
             upload_params = {
                 'path': 'backup_vk/' + name_photo,
@@ -123,28 +123,115 @@ class Yandex:
                           headers=self.headers,
                           params=upload_params)
             print(f'Файл {name_photo} добавлен на Яндекс.Диск')
+        inf_for_result_file = []
+        for i in file_list:
+            photo_inf = {'file_name': i['file_name'], 'size': i['size']}
+            inf_for_result_file.append(photo_inf)
 
         with open('result.json', 'r') as result_file:
             if json.load(result_file) == "empty":
                 with open('result.json', 'w') as new_result_file:
-                    json.dump(photo_inf_for_result_file, new_result_file, indent=2)
+                    json.dump(inf_for_result_file, new_result_file, indent=2)
             else:
                 with open('result.json', 'r') as new_result_file:
                     data = json.load(new_result_file)
-
                 with open('result.json', 'w') as new_result_file:
-                    for photo in photo_inf_for_result_file:
+                    for photo in inf_for_result_file:
                         data.append(photo)
                     json.dump(data, new_result_file, indent=2)
 
+    def delete_photo(self):
+        params = {'path': 'backup_vk'}
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'OAuth {self.token}'
+        }
+        files_info = requests.get(API_BASE_URL_YANDEX_DRIVE + 'resources', params=params, headers=headers)
+
+        for file_name in files_info.json()['_embedded']['items']:
+
+            params = {
+                'path': file_name['path'],
+                'permanently': True
+            }
+
+            headers = {
+                'Accept': 'application/json',
+                'Authorization': f'OAuth {token_yandex_drive}'
+            }
+
+            requests.delete(API_BASE_URL_YANDEX_DRIVE + 'resources/', params=params, headers=headers)
+
+            with open('result.json', 'w') as del_file:
+                json.dump(obj='empty', fp=del_file, indent=2)
+            print(f"Файл '{file_name['name']}' удален.")
 
 
-test = Vkontakte('552934290')
-sasha = Vkontakte('25222915')
-test_2 = Vkontakte('3')
+def main_menu(main_command):
+    if main_command == 'add':
+        try:
+            input_id = int(input('Введите id аккаунта пользователя в ВКонтакте: '))
+        except ValueError:
+            print('Ошибка значения...')
+            return False
+
+        quantity_photo = input('Введите количество фото для загрузки (по умолчанию - 5): ')
+        try:
+            quantity_photo_int = int(quantity_photo)
+            user = Vkontakte(owner_id=input_id, count=quantity_photo_int)
+            files = user.upload_photo()
+            cloud = Yandex(files=files)
+            cloud.upload_photo()
+        except ValueError:
+            user = Vkontakte(owner_id=input_id)
+            files = user.upload_photo()
+            cloud = Yandex(files=files)
+            cloud.upload_photo()
+    elif main_command == 'del':
+        delete_photo()
+
+    elif main_command == 'help':
+        with open('help.txt', 'r', encoding='utf-8') as help_file:
+            print(help_file.read())
+
+    elif main_command == 'show':
+        show_photo()
+
+    elif main_command == 'test':
+        assert upload_photo(552934290, 5)
+
+    else:
+        print('Неизвестная команда.\nДля справки введите "help".')
+
+
+while True:
+    command = input('Введите команду: ')
+    if command == 'exit':
+        print('Работа завершена.')
+        break
+    else:
+        main_menu(command)
+
+
+# test = Vkontakte('552934290')
+
+user = Vkontakte('25222915')
+
+cloud = Yandex()
+# test_2 = Vkontakte('3')
+#
+# while True:
+#     command = input('Введите команду: ')
+#     if command == 'exit':
+#         print('Работа завершена.')
+#         break
+#     else:
+#         main_menu(command)
+
 # pprint(test.get_album_list())
 # pprint(sasha.get_album_list())
-pprint(sasha.upload_photo())
+# pprint(user.upload_photo())
+cloud.delete_photo()
 
 # print(test.get_album_list())
 
