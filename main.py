@@ -100,6 +100,10 @@ def upload_photo(owner_id, count=5):
             'Accept': 'application/json',
             'Authorization': f'OAuth {token_yandex_drive}'}
 
+        requests.put(API_BASE_URL_YANDEX_DRIVE + 'resources/',
+                     headers=headers_yandex_drive,
+                     params={'path': 'backup_vk'})
+
         print(f"Загрузка {count} фото ...")
 
         for uploading_photo in photo_for_upload:
