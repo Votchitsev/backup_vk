@@ -20,3 +20,9 @@ def write_file(data):
         for photo in data:
             previous_data.append(photo)
             json.dump(previous_data, file, indent=2)
+
+def delete_files():
+    file = open('result.json', 'w')
+
+    file.seek(0)
+    file.close()

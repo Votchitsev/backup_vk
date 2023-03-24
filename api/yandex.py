@@ -1,9 +1,10 @@
 import requests
 from config import YANDEX_TOKEN, API_BASE_URL_YANDEX_DRIVE
 
+
 def upload_to_yandex(photo_list, count):
 
-    response = requests.put(
+    requests.put(
         API_BASE_URL_YANDEX_DRIVE + 'resources/',
         headers = {
             'Accept': 'application/json',
@@ -34,3 +35,32 @@ def upload_to_yandex(photo_list, count):
         )
 
         print(f'Файл {name_photo} добавлен на Яндекс.Диск')
+
+
+def get_from_yandex():
+
+    result = requests.get(
+        API_BASE_URL_YANDEX_DRIVE + 'resources',
+        params = {
+            'path': 'backup_vk'
+        }, 
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'OAuth {YANDEX_TOKEN}'
+        })
+    
+    return result.json()
+
+
+def delete_from_yandex(file):
+        
+    requests.delete(
+        API_BASE_URL_YANDEX_DRIVE + 'resources/',
+        params = {
+            'path': file['path'],
+            'permanently': True
+        }, 
+        headers = {
+            'Accept': 'application/json',
+            'Authorization': f'OAuth {YANDEX_TOKEN}'
+        })

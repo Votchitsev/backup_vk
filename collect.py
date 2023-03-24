@@ -2,6 +2,7 @@ from datetime import datetime
 
 
 def collect_for_upload(photo_list):
+
     result = []
     names = []
 
@@ -22,6 +23,7 @@ def collect_for_upload(photo_list):
 
 
 def collect_for_write_file(photo_list):
+    
     result = [
         {
         "file_name": photo["photo_name"],

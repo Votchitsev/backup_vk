@@ -1,18 +1,13 @@
-import requests
-import json
 from pprint import pprint
-
-from config import API_BASE_URL_YANDEX_DRIVE, YANDEX_TOKEN
-from vk_api.get_albums import vk_get_albums
-from vk_api.get_photo import vk_get_photo
-from yandex_api.upload import upload_to_yandex
-from collectors import collect_for_upload, collect_for_write_file
-from file_manager import write_file
+from api.vk import get_albums, get_photo
+from api.yandex import upload_to_yandex, get_from_yandex, delete_from_yandex
+from collect import collect_for_upload, collect_for_write_file
+from file_manager import write_file, delete_files
 
 
 def upload_photo(owner_id, count=5):
 
-    albums = vk_get_albums(owner_id, count)
+    albums = get_albums(owner_id)
 
     if albums:
         select_album_number = int(input('Введите номер альбома: '))
@@ -28,7 +23,7 @@ def upload_photo(owner_id, count=5):
     else:
         selected_album = 'profile'
 
-    photo_information = vk_get_photo(owner_id, selected_album, count)
+    photo_information = get_photo(owner_id, selected_album, count)
 
     if not photo_information:
         return False
@@ -43,47 +38,34 @@ def upload_photo(owner_id, count=5):
 
 
 def delete_photo():
-    params = {'path': 'backup_vk'}
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'OAuth {YANDEX_TOKEN}'
-    }
-    files_info = requests.get(API_BASE_URL_YANDEX_DRIVE + 'resources', params=params, headers=headers)
+    
+    files = get_from_yandex()
 
-    for file_name in files_info.json()['_embedded']['items']:
-        params = {
-            'path': file_name['path'],
-            'permanently': True
-        }
+    for file in files['_embedded']['items']:
+        delete_from_yandex(file)
 
-        headers = {
-            'Accept': 'application/json',
-            'Authorization': f'OAuth {YANDEX_TOKEN}'
-        }
+        print(f"Файл '{file['name']}' удален.")
 
-        requests.delete(API_BASE_URL_YANDEX_DRIVE + 'resources/', params=params, headers=headers)
-
-        with open('result.json', 'w') as del_file:
-            json.dump(obj='empty', fp=del_file, indent=2)
-        print(f"Файл '{file_name['name']}' удален.")
-
+    delete_files()
+    
 
 def show_photo():
-    print('Список загруженных файлов:')
-    params = {'path': 'backup_vk'}
-    headers = {
-        'Accept': 'application/json',
-        'Authorization': f'OAuth {YANDEX_TOKEN}'
-    }
 
-    files_info = requests.get(API_BASE_URL_YANDEX_DRIVE + 'resources', params=params, headers=headers)
+    print('Список загруженных файлов:')
+
+    files = get_from_yandex()
+
     count = 0
-    for photo in files_info.json()['_embedded']['items']:
+
+    for photo in files['_embedded']['items']:
+
         count += 1
+
         pprint(f"{count}) Имя файла: {photo['name']} | Размер файла: {photo['size']}")
 
 
 def main_menu(main_command):
+
     if main_command == 'add':
         try:
             input_id = int(input('Введите id аккаунта пользователя в ВКонтакте: '))
@@ -92,6 +74,7 @@ def main_menu(main_command):
             return False
 
         quantity_photo = input('Введите количество фото для загрузки (по умолчанию - 5): ')
+
         try:
             quantity_photo_int = int(quantity_photo)
             upload_photo(input_id, quantity_photo_int)
@@ -120,11 +103,13 @@ def main_menu(main_command):
 
 
 if __name__ == "__main__":
+
     with open('welcome.txt', 'r', encoding='utf-8') as welcome_file:
         print(welcome_file.read())
 
     while True:
         command = input('Введите команду: ').lower()
+
         if command == 'exit':
             print('Работа завершена.')
             break
