@@ -1,12 +1,13 @@
 import requests
 import json
-from datetime import datetime
 from pprint import pprint
 
-from config import API_BASE_URL_VK, API_BASE_URL_YANDEX_DRIVE, YANDEX_TOKEN
+from config import API_BASE_URL_YANDEX_DRIVE, YANDEX_TOKEN
 from vk_api.get_albums import vk_get_albums
 from vk_api.get_photo import vk_get_photo
+from yandex_api.upload import upload_to_yandex
 from collectors import collect_for_upload, collect_for_write_file
+from file_manager import write_file
 
 
 def upload_photo(owner_id, count=5):
@@ -34,43 +35,11 @@ def upload_photo(owner_id, count=5):
 
     photo_for_upload = collect_for_upload(photo_information)
 
-    photo_inf_for_result_file = collect_for_write_file(photo_for_upload)
+    for_result_file = collect_for_write_file(photo_for_upload)
 
-    headers_yandex_drive = {
-        'Accept': 'application/json',
-        'Authorization': f'OAuth {YANDEX_TOKEN}'}
+    upload_to_yandex(photo_for_upload, count)
 
-    requests.put(API_BASE_URL_YANDEX_DRIVE + 'resources/',
-                    headers=headers_yandex_drive,
-                    params={'path': 'backup_vk'})
-
-    print(f"Загрузка {count} фото ...")
-
-    for uploading_photo in photo_for_upload:
-        name_photo = uploading_photo['photo_name']
-        photo_url = uploading_photo['url']
-        params_yandex_drive = {
-            'path': 'backup_vk/' + name_photo,
-            'overwrite': 'true',
-            'url': photo_url
-        }
-        requests.post(API_BASE_URL_YANDEX_DRIVE + 'resources/upload',
-                        headers=headers_yandex_drive,
-                        params=params_yandex_drive)
-        print(f'Файл {name_photo} добавлен на Яндекс.Диск')
-
-    with open('result.json', 'r') as result_file:
-        if json.load(result_file) == "empty":
-            with open('result.json', 'w') as new_result_file:
-                json.dump(photo_inf_for_result_file, new_result_file, indent=2)
-        else:
-            with open('result.json', 'r') as new_result_file:
-                data = json.load(new_result_file)
-
-            with open('result.json', 'w') as new_result_file:
-                for photo in photo_inf_for_result_file:
-                    data.append(photo)
-                json.dump(data, new_result_file, indent=2)
+    write_file(for_result_file)
 
 
 def delete_photo():

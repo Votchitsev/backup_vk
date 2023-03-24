@@ -31,6 +31,7 @@ def vk_get_albums(owner_id, count):
         album_count += 1
         result[album_count] = album['id']
         print(f"{album_count} - {album['title']}")
+        
     print(f"{album_count + 1} - Выход")
 
     return result
